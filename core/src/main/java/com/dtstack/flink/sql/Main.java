@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
- 
+
 
 package com.dtstack.flink.sql;
 
@@ -34,6 +34,7 @@ import com.dtstack.flink.sql.util.DtStringUtil;
 import com.dtstack.flink.sql.watermarker.WaterMarkerAssigner;
 import com.dtstack.flink.sql.util.FlinkUtil;
 import com.dtstack.flink.sql.util.PluginUtil;
+import org.apache.calcite.config.Lex;
 import org.apache.calcite.sql.SqlInsert;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.commons.cli.CommandLine;
@@ -41,6 +42,7 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.io.Charsets;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -51,6 +53,7 @@ import org.apache.flink.calcite.shaded.com.google.common.collect.Lists;
 import org.apache.flink.calcite.shaded.com.google.common.collect.Maps;
 import org.apache.flink.calcite.shaded.com.google.common.collect.Sets;
 import org.apache.flink.client.program.ContextEnvironment;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamContextEnvironment;
@@ -66,6 +69,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLDecoder;
@@ -96,6 +100,11 @@ public class Main {
     private static final int failureInterval = 6; //min
 
     private static final int delayInterval = 10; //sec
+
+    private static org.apache.calcite.sql.parser.SqlParser.Config config = org.apache.calcite.sql.parser.SqlParser
+            .configBuilder()
+            .setLex(Lex.MYSQL)
+            .build();
 
     public static void main(String[] args) throws Exception {
 
@@ -185,7 +194,7 @@ public class Main {
                 if (sqlTree.getTmpTableMap().containsKey(tableName)) {
                     CreateTmpTableParser.SqlParserResult tmp = sqlTree.getTmpTableMap().get(tableName);
                     String realSql = DtStringUtil.replaceIgnoreQuota(result.getExecSql(), "`", "");
-                    SqlNode sqlNode = org.apache.calcite.sql.parser.SqlParser.create(realSql).parseStmt();
+                    SqlNode sqlNode = org.apache.calcite.sql.parser.SqlParser.create(realSql,config).parseStmt();
                     String tmpSql = ((SqlInsert) sqlNode).getSource().toString();
                     tmp.setExecSql(tmpSql);
                     sideSqlExec.registerTmpTable(tmp, sideTableMap, tableEnv, registerTableCache);
@@ -246,7 +255,7 @@ public class Main {
                 classLoader = FlinkUtil.loadExtraJar(jarURList, parentClassloader);
             }
             classLoader.loadClass(funcInfo.getClassName());
-            FlinkUtil.registerUDF(funcInfo.getType(), funcInfo.getClassName(), funcInfo.getName().toUpperCase(),
+            FlinkUtil.registerUDF(funcInfo.getType(), funcInfo.getClassName(), funcInfo.getName(),
                     tableEnv, classLoader);
         }
     }
@@ -310,12 +319,33 @@ public class Main {
         }
     }
 
-    private static StreamExecutionEnvironment getStreamExeEnv(Properties confProperties, String deployMode) throws IOException {
+    private static StreamExecutionEnvironment getStreamExeEnv(Properties confProperties, String deployMode) throws IOException, NoSuchMethodException {
         StreamExecutionEnvironment env = !ClusterMode.local.name().equals(deployMode) ?
                 StreamExecutionEnvironment.getExecutionEnvironment() :
                 new MyLocalStreamEnvironment();
 
         env.setParallelism(FlinkUtil.getEnvParallelism(confProperties));
+        Configuration globalJobParameters = new Configuration();
+        Method method = Configuration.class.getDeclaredMethod("setValueInternal", String.class, Object.class);
+        method.setAccessible(true);
+
+        confProperties.forEach((key,val) -> {
+            try {
+                method.invoke(globalJobParameters, key, val);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        });
+
+        ExecutionConfig exeConfig = env.getConfig();
+        if(exeConfig.getGlobalJobParameters() == null){
+            exeConfig.setGlobalJobParameters(globalJobParameters);
+        }else if(exeConfig.getGlobalJobParameters() instanceof Configuration){
+            ((Configuration) exeConfig.getGlobalJobParameters()).addAll(globalJobParameters);
+        }
+
 
         if(FlinkUtil.getMaxEnvParallelism(confProperties) > 0){
             env.setMaxParallelism(FlinkUtil.getMaxEnvParallelism(confProperties));

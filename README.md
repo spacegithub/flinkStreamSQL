@@ -9,21 +9,19 @@
 
  
 # 已支持
-  * 源表：kafka 0.9，1.x版本
-  * 维表：mysql，hbase，mongo，redis
-  * 结果表：mysql，hbase，elasticsearch5.x，mongo，redis
+  * 源表：kafka 0.9，1.x版本，serverSocket
+  * 维表：mysql，SQlServer,oracle,hbase，mongo，redis,cassandra
+  * 结果表：mysql，SQlServer,oracle,hbase，elasticsearch5.x，mongo，redis,cassandra，console
 
 # 后续开发计划
-  * 增加oracle维表，结果表功能
-  * 增加SQlServer维表，结果表功能
-  * 增加kafka结果表功能
   * 增加SQL支持CEP
   * 维表快照
   * sql优化（谓词下移等）
+  * kafka avro格式
+  * topN
 
 ## 1 快速起步
 ### 1.1 运行模式
-
 
 * 单机模式：对应Flink集群的单机模式
 * standalone模式：对应Flink集群的分布式模式
@@ -152,12 +150,14 @@ sh submit.sh -sql D:\sideSql.txt  -name xctest -remoteSqlPluginPath /opt/dtstack
 * [mysql 结果表插件](docs/mysqlSink.md)
 * [mongo 结果表插件](docs/mongoSink.md)
 * [redis 结果表插件](docs/redisSink.md)
+* [cassandra 结果表插件](docs/cassandraSink.md)
 
 ### 2.3 维表插件
 * [hbase 维表插件](docs/hbaseSide.md)
 * [mysql 维表插件](docs/mysqlSide.md)
 * [mongo 维表插件](docs/mongoSide.md)
 * [redis 维表插件](docs/redisSide.md)
+* [cassandra 维表插件](docs/cassandraSide.md)
 
 ## 3 性能指标(新增)
 
@@ -188,7 +188,7 @@ sh submit.sh -sql D:\sideSql.txt  -name xctest -remoteSqlPluginPath /opt/dtstack
 
 ```
 
-CREATE (scala|table) FUNCTION CHARACTER_LENGTH WITH com.dtstack.Kun
+CREATE (scala|table) FUNCTION CHARACTER_LENGTH WITH com.dtstack.Kun;
 
 
 CREATE TABLE MyTable(
