@@ -20,6 +20,8 @@
 
 package com.dtstack.flink.sql.parser;
 
+import com.dtstack.flink.sql.util.DtStringUtil;
+import org.apache.calcite.config.Lex;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
@@ -31,6 +33,12 @@ import java.util.regex.Pattern;
 
 import static org.apache.calcite.sql.SqlKind.IDENTIFIER;
 
+/**
+ * parser create tmp table sql
+ * Date: 2018/6/26
+ * Company: www.dtstack.com
+ * @author yanxi
+ */
 public class CreateTmpTableParser implements IParser {
 
     //select table tableName as select
@@ -61,11 +69,16 @@ public class CreateTmpTableParser implements IParser {
             String tableName = null;
             String selectSql = null;
             if(matcher.find()) {
-                tableName = matcher.group(1).toUpperCase();
+                tableName = matcher.group(1);
                 selectSql = "select " + matcher.group(2);
             }
 
-            SqlParser sqlParser = SqlParser.create(selectSql);
+            SqlParser.Config config = SqlParser
+                    .configBuilder()
+                    .setLex(Lex.MYSQL)
+                    .build();
+            SqlParser sqlParser = SqlParser.create(selectSql,config);
+
             SqlNode sqlNode = null;
             try {
                 sqlNode = sqlParser.parseStmt();
@@ -77,7 +90,8 @@ public class CreateTmpTableParser implements IParser {
             parseNode(sqlNode, sqlParseResult);
 
             sqlParseResult.setTableName(tableName);
-            sqlParseResult.setExecSql(selectSql.toUpperCase());
+            String transformSelectSql = DtStringUtil.replaceIgnoreQuota(sqlNode.toString(), "`", "");
+            sqlParseResult.setExecSql(transformSelectSql);
             sqlTree.addTmpSql(sqlParseResult);
             sqlTree.addTmplTableInfo(tableName, sqlParseResult);
         } else {
@@ -87,7 +101,7 @@ public class CreateTmpTableParser implements IParser {
                 String tableName = null;
                 String fieldsInfoStr = null;
                 if (matcher.find()){
-                    tableName = matcher.group(1).toUpperCase();
+                    tableName = matcher.group(1);
                     fieldsInfoStr = matcher.group(2);
                 }
                 CreateTmpTableParser.SqlParserResult sqlParseResult = new CreateTmpTableParser.SqlParserResult();

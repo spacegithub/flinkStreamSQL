@@ -22,6 +22,7 @@ package com.dtstack.flink.sql.table;
 
 import org.apache.flink.calcite.shaded.com.google.common.collect.Lists;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -31,9 +32,13 @@ import java.util.List;
  * @author xuchao
  */
 
-public abstract class TableInfo {
+public abstract class TableInfo implements Serializable {
 
     public static final String PARALLELISM_KEY = "parallelism";
+
+    public static final String FIELD_DELINITER = "fielddelimiter";
+
+    public static final String LENGTH_CHECK_POLICY = "lengthcheckpolicy";
 
     private String name;
 
@@ -54,6 +59,10 @@ public abstract class TableInfo {
     private List<String> primaryKeys;
 
     private Integer parallelism = 1;
+
+    private String fieldDelimiter;
+
+    private String lengthCheckPolicy = "SKIP";
 
     public String[] getFieldTypes() {
         return fieldTypes;
@@ -121,6 +130,47 @@ public abstract class TableInfo {
         fieldTypeList.add(fieldType);
     }
 
+    public void setFields(String[] fields) {
+        this.fields = fields;
+    }
+
+    public void setFieldTypes(String[] fieldTypes) {
+        this.fieldTypes = fieldTypes;
+    }
+
+    public void setFieldClasses(Class<?>[] fieldClasses) {
+        this.fieldClasses = fieldClasses;
+    }
+
+    public List<String> getFieldList() {
+        return fieldList;
+    }
+
+    public List<String> getFieldTypeList() {
+        return fieldTypeList;
+    }
+
+    public List<Class> getFieldClassList() {
+        return fieldClassList;
+    }
+
+
+
+    public String getFieldDelimiter() {
+        return fieldDelimiter;
+    }
+
+    public void setFieldDelimiter(String fieldDelimiter) {
+        this.fieldDelimiter = fieldDelimiter;
+    }
+
+    public String getLengthCheckPolicy() {
+        return lengthCheckPolicy;
+    }
+
+    public void setLengthCheckPolicy(String lengthCheckPolicy) {
+        this.lengthCheckPolicy = lengthCheckPolicy;
+    }
 
     public void finish(){
         this.fields = fieldList.toArray(new String[fieldList.size()]);

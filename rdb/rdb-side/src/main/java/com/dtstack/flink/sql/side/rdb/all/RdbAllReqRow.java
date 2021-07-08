@@ -23,8 +23,11 @@ import com.dtstack.flink.sql.side.FieldInfo;
 import com.dtstack.flink.sql.side.JoinInfo;
 import com.dtstack.flink.sql.side.SideTableInfo;
 import com.dtstack.flink.sql.side.rdb.table.RdbSideTableInfo;
+import com.dtstack.flink.sql.side.rdb.util.MathUtil;
+import com.dtstack.flink.sql.side.rdb.util.SwitchUtil;
 import org.apache.calcite.sql.JoinType;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.calcite.shaded.com.google.common.collect.Lists;
 import org.apache.flink.calcite.shaded.com.google.common.collect.Maps;
@@ -34,6 +37,7 @@ import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.Calendar;
 import java.util.List;
@@ -58,12 +62,13 @@ public abstract class RdbAllReqRow extends AllReqRow {
 
     private AtomicReference<Map<String, List<Map<String, Object>>>> cacheRef = new AtomicReference<>();
 
+
     public RdbAllReqRow(RowTypeInfo rowTypeInfo, JoinInfo joinInfo, List<FieldInfo> outFieldInfoList, SideTableInfo sideTableInfo) {
         super(new RdbAllSideInfo(rowTypeInfo, joinInfo, outFieldInfoList, sideTableInfo));
     }
 
     @Override
-    protected Row fillData(Row input, Object sideInput) {
+    public Row fillData(Row input, Object sideInput) {
         Map<String, Object> cacheInfo = (Map<String, Object>) sideInput;
         Row row = new Row(sideInfo.getOutFieldInfoList().size());
         for (Map.Entry<Integer, Integer> entry : sideInfo.getInFieldIndex().entrySet()) {
@@ -74,6 +79,7 @@ public abstract class RdbAllReqRow extends AllReqRow {
             if (obj instanceof Timestamp && isTimeIndicatorTypeInfo) {
                 obj = ((Timestamp) obj).getTime();
             }
+
             row.setField(entry.getKey(), obj);
         }
 
@@ -194,10 +200,14 @@ public abstract class RdbAllReqRow extends AllReqRow {
             statement.setFetchSize(getFetchSize());
             ResultSet resultSet = statement.executeQuery(sql);
             String[] sideFieldNames = sideInfo.getSideSelectFields().split(",");
+            String[] fields = sideInfo.getSideTableInfo().getFieldTypes();
             while (resultSet.next()) {
                 Map<String, Object> oneRow = Maps.newHashMap();
                 for (String fieldName : sideFieldNames) {
-                    oneRow.put(fieldName.trim(), resultSet.getObject(fieldName.trim()));
+                    Object object = resultSet.getObject(fieldName.trim());
+                    int fieldIndex = sideInfo.getSideTableInfo().getFieldList().indexOf(fieldName.trim());
+                    object = SwitchUtil.getTarget(object, fields[fieldIndex]);
+                    oneRow.put(fieldName.trim(), object);
                 }
 
                 String cacheKey = buildKey(oneRow, sideInfo.getEqualFieldList());
@@ -213,7 +223,7 @@ public abstract class RdbAllReqRow extends AllReqRow {
         }
     }
 
-    public int getFetchSize(){
+    public int getFetchSize() {
         return 1000;
     }
 

@@ -19,6 +19,7 @@ package com.dtstack.flink.sql.sink.sqlserver;
 
 import com.dtstack.flink.sql.sink.IStreamSinkGener;
 import com.dtstack.flink.sql.sink.rdb.RdbSink;
+import com.dtstack.flink.sql.sink.rdb.format.ExtendOutputFormat;
 import com.dtstack.flink.sql.sink.rdb.format.RetractJDBCOutputFormat;
 import org.apache.commons.lang3.StringUtils;
 
@@ -41,7 +42,7 @@ public class SqlserverSink extends RdbSink implements IStreamSinkGener<RdbSink> 
 
     @Override
     public RetractJDBCOutputFormat getOutputFormat() {
-        return new SqlserverOutputFormat();
+        return new ExtendOutputFormat();
     }
 
     @Override
@@ -91,7 +92,7 @@ public class SqlserverSink extends RdbSink implements IStreamSinkGener<RdbSink> 
         for (Map.Entry<String, List<String>> entry : updateKey.entrySet()) {
             List<String> list = entry.getValue();
             for (String col : list) {
-                if (!keyCols.contains(col)) {
+                if (!containsIgnoreCase(keyCols,col)) {
                     keyCols.add(col);
                 }
             }
@@ -107,7 +108,7 @@ public class SqlserverSink extends RdbSink implements IStreamSinkGener<RdbSink> 
             if (keyCols == null || keyCols.size() == 0) {
                 continue;
             }
-            if (fullColumn == null || column.contains(col)) {
+            if (fullColumn == null || containsIgnoreCase(column,col)) {
                 list.add(prefixLeft + col + "=" + prefixRight + col);
             } else {
                 list.add(prefixLeft + col + "=null");
@@ -153,6 +154,14 @@ public class SqlserverSink extends RdbSink implements IStreamSinkGener<RdbSink> 
         return sb.toString();
     }
 
+    public boolean containsIgnoreCase(List<String> l, String s) {
+        Iterator<String> it = l.iterator();
+        while (it.hasNext()) {
+            if (it.next().equalsIgnoreCase(s))
+                return true;
+        }
+        return false;
+    }
     public String quoteColumn(String column) {
         return getStartQuote() + column + getEndQuote();
     }

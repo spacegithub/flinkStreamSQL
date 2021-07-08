@@ -82,9 +82,6 @@ public abstract class AbsTableParser {
         String[] fieldRows = DtStringUtil.splitIgnoreQuotaBrackets(fieldsInfo, ",");
         for(String fieldRow : fieldRows){
             fieldRow = fieldRow.trim();
-            if(fieldNameNeedsUpperCase()) {
-                fieldRow = fieldRow.toUpperCase();
-            }
 
             boolean isMatcherKey = dealKeyPattern(fieldRow, tableInfo);
 
@@ -113,7 +110,7 @@ public abstract class AbsTableParser {
     }
 
     public static void dealPrimaryKey(Matcher matcher, TableInfo tableInfo){
-        String primaryFields = matcher.group(1);
+        String primaryFields = matcher.group(1).trim();
         String[] splitArry = primaryFields.split(",");
         List<String> primaryKes = Lists.newArrayList(splitArry);
         tableInfo.setPrimaryKeys(primaryKes);

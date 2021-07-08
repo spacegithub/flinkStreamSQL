@@ -18,12 +18,9 @@
 
 package com.dtstack.flink.sql.launcher;
 
-import com.dtstack.flink.sql.ClusterMode;
 import org.apache.commons.lang.StringUtils;
-import org.apache.flink.client.deployment.StandaloneClusterDescriptor;
-import org.apache.flink.client.deployment.StandaloneClusterId;
 import org.apache.flink.client.program.ClusterClient;
-import org.apache.flink.client.program.rest.RestClusterClient;
+import org.apache.flink.client.program.StandaloneClusterClient;
 import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.GlobalConfiguration;
@@ -38,18 +35,14 @@ import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-
 import java.net.InetSocketAddress;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
+import com.dtstack.flink.sql.ClusterMode;
+import com.dtstack.flink.sql.options.LauncherOptions;
 
 /**
- * The Factory of ClusterClient
- *
- * Company: www.dtstack.com
- * @author huyifan.zju@163.com
+ * @author sishu.yss
  */
 public class ClusterClientFactory {
 
@@ -60,17 +53,13 @@ public class ClusterClientFactory {
         } else if(mode.equals(ClusterMode.yarn.name())) {
             return createYarnClient(launcherOptions);
         }
-
         throw new IllegalArgumentException("Unsupported cluster client type: ");
     }
 
     public static ClusterClient createStandaloneClient(LauncherOptions launcherOptions) throws Exception {
         String flinkConfDir = launcherOptions.getFlinkconf();
         Configuration config = GlobalConfiguration.loadConfiguration(flinkConfDir);
-
-        StandaloneClusterDescriptor standaloneClusterDescriptor = new StandaloneClusterDescriptor(config);
-        RestClusterClient clusterClient = standaloneClusterDescriptor.retrieve(StandaloneClusterId.getInstance());
-
+        StandaloneClusterClient clusterClient = new StandaloneClusterClient(config);
         LeaderConnectionInfo connectionInfo = clusterClient.getClusterConnectionInfo();
         InetSocketAddress address = AkkaUtils.getInetSocketAddressFromAkkaURL(connectionInfo.getAddress());
         config.setString(JobManagerOptions.ADDRESS, address.getAddress().getHostName());
